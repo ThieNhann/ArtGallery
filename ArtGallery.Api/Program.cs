@@ -1,4 +1,5 @@
 using ArtGallery.Api.Data;
+using ArtGallery.Api.Data.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ArtGalleryDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDatabaseSeedData();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
