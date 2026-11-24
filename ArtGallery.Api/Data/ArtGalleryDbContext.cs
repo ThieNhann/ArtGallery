@@ -1,9 +1,11 @@
 using ArtGallery.Api.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtGallery.Api.Data;
 
-public sealed class ArtGalleryDbContext(DbContextOptions<ArtGalleryDbContext> options) : DbContext(options)
+public sealed class ArtGalleryDbContext(DbContextOptions<ArtGalleryDbContext> options)
+    : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<Category> Categories => Set<Category>();
@@ -16,6 +18,8 @@ public sealed class ArtGalleryDbContext(DbContextOptions<ArtGalleryDbContext> op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ArtGalleryDbContext).Assembly);
+        modelBuilder.Entity<ApplicationUser>().Property(user => user.FullName).HasMaxLength(200).IsRequired();
     }
 }

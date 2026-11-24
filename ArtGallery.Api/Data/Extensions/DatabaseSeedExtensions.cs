@@ -1,4 +1,6 @@
 using ArtGallery.Api.Models;
+using ArtGallery.Api.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -100,5 +102,80 @@ public static class DatabaseSeedExtensions
         dbContext.Paintings.AddRange(paintings.Where(x => !existingPaintingIds.Contains(x.Id)));
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SeedIdentityAsync(services, cancellationToken);
+    }
+
+    private static async Task SeedIdentityAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var configuredEmail = configuration["AdminSeed:Email"];
+        if (string.IsNullOrWhiteSpace(configuredEmail))
+        {
+            throw new InvalidOperationException(
+                "Configure AdminSeed:Email using user secrets or environment variables.");
+        }
+
+        var email = configuredEmail.Trim();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        foreach (var roleName in ApplicationRoles.All)
+        {
+            if (await roleManager.RoleExistsAsync(roleName))
+            {
+                continue;
+            }
+
+            var roleResult = await roleManager.CreateAsync(new IdentityRole(roleName));
+            if (!roleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create the {roleName} role: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+            }
+        }
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var admin = await userManager.FindByEmailAsync(email);
+        if (admin is null)
+        {
+            var password = configuration["AdminSeed:Password"];
+            var fullName = configuration["AdminSeed:FullName"] ?? "Gallery Administrator";
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new InvalidOperationException(
+                    "Configure AdminSeed:Password using user secrets or environment variables to create the admin account.");
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName) || fullName.Length > 200)
+            {
+                throw new InvalidOperationException("AdminSeed:FullName must be between 1 and 200 characters.");
+            }
+
+            admin = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FullName = fullName.Trim(),
+                LockoutEnabled = true
+            };
+
+            var createResult = await userManager.CreateAsync(admin, password);
+            if (!createResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to seed the admin account: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
+            }
+        }
+
+        if (!await userManager.IsInRoleAsync(admin, ApplicationRoles.Admin))
+        {
+            var addRoleResult = await userManager.AddToRoleAsync(admin, ApplicationRoles.Admin);
+            if (!addRoleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to assign the Admin role: {string.Join("; ", addRoleResult.Errors.Select(error => error.Description))}");
+            }
+        }
     }
 }

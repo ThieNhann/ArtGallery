@@ -1,10 +1,5 @@
 @ArtGallery.Api_HostAddress = http://localhost:5048
 
-GET {{ArtGallery.Api_HostAddress}}/openapi/v1.json
-Accept: application/json
-
-###
-
 ### Default title order
 GET {{ArtGallery.Api_HostAddress}}/api/public/paintings?page=1&pageSize=12
 Accept: application/json
@@ -17,20 +12,50 @@ Accept: application/json
 
 ###
 
-### Price descending
-GET {{ArtGallery.Api_HostAddress}}/api/public/paintings?page=1&pageSize=12&order=PriceDesc
-Accept: application/json
+### Register a test customer (first run: 200 OK, repeated run: 409 Conflict)
+POST {{ArtGallery.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "auth-test@example.com",
+  "password": "ExamplePass!1234",
+  "fullName": "Auth Test User"
+}
 
 ###
 
-### Year ascending
-GET {{ArtGallery.Api_HostAddress}}/api/public/paintings?page=1&pageSize=12&order=YearAsc
-Accept: application/json
+### Log in with the test customer
+POST {{ArtGallery.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "auth-test@example.com",
+  "password": "ExamplePass!1234"
+}
 
 ###
 
-### Year descending with filters
-GET {{ArtGallery.Api_HostAddress}}/api/public/paintings?page=1&pageSize=12&order=YearDesc&search=horizon&medium=oil&minPrice=1000000&maxPrice=20000000
-Accept: application/json
+### Login with an incorrect password (expected: 401 Unauthorized)
+POST {{ArtGallery.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "auth-test@example.com",
+  "password": "WrongPassword!1234"
+}
 
 ###
+
+### Register with an invalid email (expected: 400 Bad Request)
+POST {{ArtGallery.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "ExamplePass!1234",
+  "fullName": "Invalid Email User"
+}
+
+###
+
+
